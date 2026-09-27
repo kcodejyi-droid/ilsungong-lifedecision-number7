@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>손절 타이밍 진단: 이 관계, 계속 이어갈까?</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Gowun+Dodum&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+  :root {
+    --bg: #FFFFFF;
+    --surface: #FBF6F7;
+    --surface-line: #EEDDE1;
+    --text: #241A1D;
+    --text-muted: #8A7A7D;
+    --green: #1C8C5C;
+    --green-soft: #DEF5EA;
+    --yellow: #E08900;
+    --yellow-soft: #FFF0D6;
+    --red: #E5484D;
+    --red-soft: #FCE2E3;
+    --accent: #7A3B4E;
+    --accent-soft: #F5E4E8;
+    --shadow: 0 18px 40px -22px rgba(36,26,29,0.35);
+    --radius: 22px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #1A1416;
+      --surface: #241C1F;
+      --surface-line: #3D2F33;
+      --text: #F4E9EB;
+      --text-muted: #B8A4A9;
+      --green-soft: #163A2C;
+      --yellow-soft: #3A2E14;
+      --red-soft: #402024;
+      --accent-soft: #3A2530;
+      --shadow: 0 18px 40px -18px rgba(0,0,0,0.6);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #1A1416;
+    --surface: #241C1F;
+    --surface-line: #3D2F33;
+    --text: #F4E9EB;
+    --text-muted: #B8A4A9;
+    --green-soft: #163A2C;
+    --yellow-soft: #3A2E14;
+    --red-soft: #402024;
+    --accent-soft: #3A2530;
+    --shadow: 0 18px 40px -18px rgba(0,0,0,0.6);
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Gowun Dodum', sans-serif;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    -webkit-tap-highlight-color: transparent;
+  }
+  .wrap {
+    max-width: 480px; margin: 0 auto; padding: 28px 20px 48px;
+    min-height: 100%; display: flex; flex-direction: column;
+  }
+  .brand {
+    display: flex; align-items: baseline; gap: 8px; margin-bottom: 22px;
+    color: var(--text-muted); font-size: 13px; letter-spacing: 0.02em;
+  }
+  .brand b { color: var(--text); font-family: 'Black Han Sans', sans-serif; font-size: 15px; }
+
+  .screen { display: none; flex: 1; flex-direction: column; }
+  .screen.active { display: flex; }
+
+  .receipt {
+    background: var(--surface);
+    border: 1px solid var(--surface-line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 34px 26px 28px;
+    position: relative;
+  }
+  .receipt::after {
+    content: "";
+    position: absolute; left: 0; right: 0; bottom: -11px; height: 22px;
+    background:
+      linear-gradient(-45deg, var(--bg) 8px, transparent 0),
+      linear-gradient(45deg, var(--bg) 8px, transparent 0);
+    background-size: 16px 22px;
+    background-position: left bottom;
+  }
+  .tag {
+    display: inline-block; font-size: 12px; color: var(--accent);
+    background: var(--accent-soft); padding: 5px 11px; border-radius: 999px;
+    margin-bottom: 14px; font-weight: 700;
+  }
+  h1.title {
+    font-family: 'Black Han Sans', sans-serif; font-weight: 400;
+    font-size: 22px; line-height: 1.5; margin: 0 0 14px;
+  }
+  .desc { color: var(--text-muted); font-size: 15px; line-height: 1.7; margin: 0 0 22px; }
+  .meta-line {
+    display: flex; gap: 14px; font-size: 13px; color: var(--text-muted);
+    border-top: 1px dashed var(--surface-line); padding-top: 16px; font-family: monospace;
+  }
+
+  .cta {
+    margin-top: 26px; width: 100%; border: none; background: var(--text); color: var(--bg);
+    font-family: 'Gowun Dodum', sans-serif; font-weight: 700; font-size: 17px;
+    padding: 17px; border-radius: 16px; cursor: pointer;
+  }
+  .cta:focus-visible, .opt:focus-visible, .ghost-btn:focus-visible {
+    outline: 3px solid var(--accent); outline-offset: 2px;
+  }
+  .cta:active { transform: scale(0.98); }
+
+  .signal-preview { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 22px; }
+  .signal-chip { text-align: center; padding: 12px 4px; border-radius: 12px; font-size: 22px; }
+  .signal-chip span { display: block; font-size: 10.5px; margin-top: 5px; color: var(--text-muted); line-height: 1.4; }
+
+  .progress-row { display: flex; align-items: center; gap: 10px; margin-bottom: 22px; }
+  .progress-track { flex: 1; height: 6px; background: var(--surface-line); border-radius: 999px; overflow: hidden; }
+  .progress-fill { height: 100%; background: var(--accent); border-radius: 999px; transition: width .35s ease; }
+  .q-count { font-family: monospace; font-size: 13px; color: var(--text-muted); white-space: nowrap; }
+  .q-text {
+    font-family: 'Black Han Sans', sans-serif; font-weight: 400; font-size: 19px;
+    line-height: 1.5; margin: 4px 0 24px;
+  }
+  .options { display: flex; flex-direction: column; gap: 11px; }
+  .opt {
+    text-align: left; background: var(--surface); border: 1.5px solid var(--surface-line);
+    border-radius: 15px; padding: 16px; font-family: 'Gowun Dodum', sans-serif;
+    font-size: 14.8px; line-height: 1.55; color: var(--text); cursor: pointer;
+    transition: border-color .15s ease, transform .1s ease;
+  }
+  .opt:hover { border-color: var(--accent); }
+  .opt:active { transform: scale(0.985); }
+
+  .back-link {
+    background: none; border: none; color: var(--text-muted);
+    font-family: 'Gowun Dodum', sans-serif; font-size: 13px;
+    padding: 0; margin-top: 20px; cursor: pointer; align-self: flex-start; text-decoration: underline;
+  }
+
+  .result-emoji { font-size: 54px; line-height: 1; margin-bottom: 10px; }
+  .result-kicker { color: var(--text-muted); font-size: 13px; margin-bottom: 6px; font-family: monospace; }
+  .result-title {
+    font-family: 'Black Han Sans', sans-serif; font-weight: 400; font-size: 23px; margin: 0 0 10px;
+  }
+  .result-line { font-size: 16px; font-weight: 700; margin-bottom: 16px; }
+  .result-body {
+    font-size: 15px; line-height: 1.75; color: var(--text-muted); margin-bottom: 26px;
+    background: var(--bg); border: 1px dashed var(--surface-line); border-radius: 12px; padding: 14px;
+  }
+
+  .gauge { margin-bottom: 8px; }
+  .gauge-track {
+    position: relative; height: 14px; border-radius: 999px; overflow: visible;
+    background: linear-gradient(to right,
+      var(--green) 0%, var(--green) 31.25%,
+      var(--yellow) 31.25%, var(--yellow) 64.5%,
+      var(--red) 64.5%, var(--red) 100%);
+  }
+  .gauge-marker {
+    position: absolute; top: 50%; width: 20px; height: 20px; border-radius: 50%;
+    background: var(--surface); border: 3px solid var(--text);
+    transform: translate(-50%, -50%); box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+  }
+  .gauge-labels {
+    display: flex; justify-content: space-between; font-size: 11px; color: var(--text-muted);
+    margin-top: 8px; font-family: monospace;
+  }
+
+  .btn-row { display: flex; gap: 10px; margin-top: 22px; }
+  .ghost-btn {
+    flex: 1; padding: 15px; border-radius: 14px; border: 1.5px solid var(--surface-line);
+    background: transparent; color: var(--text); font-family: 'Gowun Dodum', sans-serif;
+    font-weight: 700; font-size: 14.5px; cursor: pointer;
+  }
+  .ghost-btn.primary { background: var(--text); color: var(--bg); border-color: var(--text); }
+
+  .toast {
+    position: fixed; left: 50%; bottom: calc(28px + env(safe-area-inset-bottom, 0px));
+    transform: translateX(-50%) translateY(10px);
+    background: var(--text); color: var(--bg); padding: 11px 18px; border-radius: 999px;
+    font-size: 13.5px; opacity: 0; pointer-events: none; transition: opacity .2s ease, transform .2s ease;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand"><b>손절 타이밍 신호등</b> · 8문항</div>
+
+  <!-- 인트로 -->
+  <section class="screen active" id="screen-intro">
+    <div class="receipt">
+      <span class="tag">인간관계 🚪</span>
+      <h1 class="title">손절 타이밍 진단:<br>이 관계, 계속<br>이어가야 할까?</h1>
+      <p class="desc">연락하기 전, 8가지 질문으로 이 관계가 나에게 득인지 독인지 냉정하게 판정해드립니다.</p>
+      <div class="meta-line">
+        <span>문항 08</span><span>·</span><span>약 2분</span><span>·</span><span>판정 3단계</span>
+      </div>
+    </div>
+
+    <div class="signal-preview">
+      <div class="signal-chip" style="background:var(--green-soft)">🟢<span>관계 유지</span></div>
+      <div class="signal-chip" style="background:var(--yellow-soft)">🟡<span>거리두기</span></div>
+      <div class="signal-chip" style="background:var(--red-soft)">🔴<span>즉시 손절</span></div>
+    </div>
+
+    <button class="cta" id="btn-start">판정 시작하기</button>
+  </section>
+
+  <!-- 퀴즈 -->
+  <section class="screen" id="screen-quiz">
+    <div class="progress-row">
+      <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+      <div class="q-count" id="q-count">Q1/8</div>
+    </div>
+    <p class="q-text" id="q-text"></p>
+    <div class="options" id="options"></div>
+    <button class="back-link" id="btn-back">← 이전 질문</button>
+  </section>
+
+  <!-- 결과 -->
+  <section class="screen" id="screen-result">
+    <div class="receipt" id="result-card" style="margin-bottom:0;">
+      <div class="result-emoji" id="result-emoji"></div>
+      <div class="result-kicker" id="result-kicker"></div>
+      <h2 class="result-title" id="result-title"></h2>
+      <p class="result-line" id="result-line"></p>
+
+      <div class="gauge">
+        <div class="gauge-track">
+          <div class="gauge-marker" id="gauge-marker"></div>
+        </div>
+        <div class="gauge-labels"><span>관계 유지</span><span>거리두기</span><span>즉시 손절</span></div>
+      </div>
+
+      <p class="result-body" id="result-body"></p>
+    </div>
+    <div class="btn-row">
+      <button class="ghost-btn" id="btn-retry">다시 진단하기</button>
+      <button class="ghost-btn primary" id="btn-save-image">결과 이미지 저장</button>
+    </div>
+  </section>
+</div>
+
+<div class="toast" id="toast">저장됐어요</div>
+
+<script>
+(function () {
+  const VERDICTS = [
+    { min: 8, max: 15, emoji: '🟢', name: '관계 유지 및 진흥', color: 'var(--green)',
+      line: '이 사람은 당신 인생의 소중한 귀인입니다! 따뜻한 마음을 나누세요.',
+      body: '상호 존중과 신뢰가 가득한 건강한 관계입니다. 지금처럼 서로를 아끼며 좋은 인연을 깊게 이어가세요!' },
+    { min: 16, max: 23, emoji: '🟡', name: '거리두기 및 냉각기', color: 'var(--yellow)',
+      line: '지금은 잠시 에너지를 아낄 때! 서서히 거리를 두고 관계를 재정비하세요.',
+      body: '감정 소모가 조금씩 누적되고 있습니다. 연락 빈도를 줄이고, 무리하게 맞추어 주지 않으면서 나를 보호하는 안전거리를 확보하세요.' },
+    { min: 24, max: 32, emoji: '🔴', name: '즉시 손절 및 차단', color: 'var(--red)',
+      line: 'STOP! 당신의 멘탈을 갉아먹는 독성 관계입니다. 당장 조용히 정리하세요.',
+      body: '더 이상의 감정 낭비는 금물입니다. 미련이나 죄책감은 버리고, 연락처 차단 및 손절을 통해 본인의 평온한 일상을 최우선으로 지키세요!' },
+  ];
+
+  const QUESTIONS = [
+    { q: '최근 이 사람과 연락하거나 만났을 때, 당신의 감정적 상태나 멘탈의 변화는 주로 어땠나요?', opts: [
+      { w:1, text:'만나고 나면 에너지가 충전되고 좋은 자극을 받는 소중한 관계다.' },
+      { w:2, text:'평범하거나 무난해서 특별히 감정 소모가 크지 않다.' },
+      { w:3, text:'만나거나 연락을 주고받고 나면 은근히 피곤하고 기가 빨린다.' },
+      { w:4, text:'생각만 해도 스트레스가 치밀고 며칠 동안 멘탈이 흔들린다.' },
+    ]},
+    { q: '상대방이 당신을 대하는 태도나 배려심에서 가장 자주 느끼는 감정은 무엇인가요?', opts: [
+      { w:1, text:'상호 존중과 깊은 신뢰가 바탕이 되어 있어 마음이 편안하다.' },
+      { w:2, text:'가끔 서운할 때도 있지만 대화로 풀 수 있는 수준이다.' },
+      { w:3, text:'나만 항상 눈치를 보거나 일방적으로 맞춰주고 있다는 느낌이 든다.' },
+      { w:4, text:'내 감정이나 입장은 전혀 안중에도 없고 오직 본인 위주로만 행동한다.' },
+    ]},
+    { q: '이 관계에서 크고 작은 갈등이 생겼을 때, 대화를 통한 해결 가능성은 어느 정도인가요?', opts: [
+      { w:1, text:'서로 진솔하게 터놓고 이야기하면 오해를 원만하게 잘 푼다.' },
+      { w:2, text:'시간이 조금 걸리더라도 결국엔 타협점을 찾게 된다.' },
+      { w:3, text:'말을 꺼내봐도 피드백이 없거나 내 탓으로 돌리려고 들어서 대화가 통하지 않는다.' },
+      { w:4, text:'대화 시도 자체가 지치고, 고칠 의지가 전혀 보이지 않는다.' },
+    ]},
+    { q: '당신이 힘들거나 도움이 필요할 때, 이 사람은 어떤 태도를 보여주었나요?', opts: [
+      { w:1, text:'진심으로 걱정해주고 발벗고 나서서 도움을 주었던 든든한 사람이다.' },
+      { w:2, text:'상황이 여의치 않으면 못 도와주더라도 응원은 해준다.' },
+      { w:3, text:'내가 힘들 때는 귀신같이 사라지거나 남의 일처럼 무관심하다.' },
+      { w:4, text:'오히려 나의 약점을 이용하거나 뒤에서 깎아내리는 언행을 한 적이 있다.' },
+    ]},
+    { q: '이 관계를 유지함으로써 당신의 인생이나 성장에 미치는 실질적인 영향은 무엇인가요?', opts: [
+      { w:1, text:'서로에게 좋은 영감을 주고 긍정적인 동기부여가 된다.' },
+      { w:2, text:'인생에서 잔잔하게 함께 갈 수 있는 무난한 인연이다.' },
+      { w:3, text:'득보다 실이 많고, 내 소중한 시간과 에너지를 갉아먹는 주범이다.' },
+      { w:4, text:'내 인생에 해악만 끼치며 하루빨리 도려내야 할 독소 같은 존재다.' },
+    ]},
+    { q: '만약 오늘 당장 이 사람과의 연락을 끊거나 관계를 정리하더라도, 현실 생활에 타격이 있나요?', opts: [
+      { w:1, text:'공사다망 얽혀 있어서 당장 끊어내기엔 현실적인 제약이 꽤 크다.' },
+      { w:2, text:'가끔 마주치면 어색하겠지만 삶에 큰 지장은 없다.' },
+      { w:3, text:'겹치는 지인이나 일도 거의 없어서 마음만 먹으면 언제든 멀어질 수 있다.' },
+      { w:4, text:'당장 차단하고 번호를 지워버려도 내 일상에 아무런 타격이 없다.' },
+    ]},
+    { q: '이 사람과 계속 인연을 이어가게 되는 가장 결정적인 진짜 이유는 무엇인가요?', opts: [
+      { w:1, text:'오랫동안 함께 쌓아온 깊은 정과 소중한 추억이 진심으로 진하다.' },
+      { w:2, text:'오랫동안 알고 지낸 세월이 아깝거나 굳이 먼저 끊기 귀찮아서다.' },
+      { w:3, text:'혹시 나중에 불이익을 당할까 봐 혹은 눈치가 보여서 마지못해 유지한다.' },
+      { w:4, text:'이유 따윈 없고, 그냥 내 인생에서 내보내고 싶지만 용기가 안 났을 뿐이다.' },
+    ]},
+    { q: '시간이 흘러 미래를 그려봤을 때, 이 사람이 당신의 곁에 계속 남아있는 모습은 어떤가요?', opts: [
+      { w:1, text:'늙어서도 서로 의지하며 곁에 있어 주면 정말 든든할 것 같다.' },
+      { w:2, text:'지금처럼 적당한 거리를 유지하며 가끔 안부 묻는 사이로 남을 것 같다.' },
+      { w:3, text:'솔직히 앞으로 더 이상 시간 낭비하고 싶지 않고 멀어지고 싶다.' },
+      { w:4, text:'내 인생의 미래 시나리오에서 이 사람은 완벽하게 지워버리고 싶다.' },
+    ]},
+  ];
+
+  let current = 0;
+  let answers = []; // weight numbers
+  let shuffledCache = [];
+  let activeQuestions = QUESTIONS;
+
+  const screens = {
+    intro: document.getElementById('screen-intro'),
+    quiz: document.getElementById('screen-quiz'),
+    result: document.getElementById('screen-result'),
+  };
+  function show(name) {
+    Object.values(screens).forEach(s => s.classList.remove('active'));
+    screens[name].classList.add('active');
+    window.scrollTo(0, 0);
+  }
+
+  function shuffle(arr) {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  function renderQuestion() {
+    const qData = activeQuestions[current];
+    document.getElementById('q-count').textContent = 'Q' + (current + 1) + '/' + activeQuestions.length;
+    document.getElementById('progress-fill').style.width = ((current) / activeQuestions.length * 100) + '%';
+    document.getElementById('q-text').textContent = qData.q;
+    document.getElementById('btn-back').style.visibility = current === 0 ? 'hidden' : 'visible';
+
+    if (!shuffledCache[current]) {
+      shuffledCache[current] = shuffle(qData.opts);
+    }
+    const opts = shuffledCache[current];
+
+    const wrap = document.getElementById('options');
+    wrap.innerHTML = '';
+    opts.forEach(o => {
+      const btn = document.createElement('button');
+      btn.className = 'opt';
+      btn.type = 'button';
+      btn.textContent = o.text;
+      btn.addEventListener('click', () => selectAnswer(o.w));
+      wrap.appendChild(btn);
+    });
+  }
+
+  function selectAnswer(weight) {
+    answers[current] = weight;
+    current += 1;
+    if (current >= activeQuestions.length) {
+      document.getElementById('progress-fill').style.width = '100%';
+      setTimeout(showResult, 150);
+    } else {
+      renderQuestion();
+    }
+  }
+
+  document.getElementById('btn-back').addEventListener('click', () => {
+    if (current > 0) {
+      current -= 1;
+      renderQuestion();
+    }
+  });
+
+  document.getElementById('btn-start').addEventListener('click', () => {
+    current = 0;
+    answers = [];
+    shuffledCache = [];
+    activeQuestions = shuffle(QUESTIONS);
+    show('quiz');
+    renderQuestion();
+  });
+
+  document.getElementById('btn-retry').addEventListener('click', () => {
+    current = 0;
+    answers = [];
+    shuffledCache = [];
+    show('intro');
+  });
+
+  function showResult() {
+    const total = answers.reduce((sum, w) => sum + w, 0);
+    const verdict = VERDICTS.find(v => total >= v.min && total <= v.max) || VERDICTS[1];
+
+    document.getElementById('result-emoji').textContent = verdict.emoji;
+    document.getElementById('result-kicker').textContent = '총점 ' + total + ' / 32';
+    document.getElementById('result-title').textContent = verdict.name;
+    document.getElementById('result-title').style.color = verdict.color;
+    document.getElementById('result-line').textContent = verdict.line;
+    document.getElementById('result-body').textContent = verdict.body;
+
+    const minScore = 8, maxScore = 32;
+    const pct = ((total - minScore) / (maxScore - minScore)) * 100;
+    document.getElementById('gauge-marker').style.left = pct + '%';
+
+    show('result');
+  }
+
+  function showToast(msg) {
+    const toast = document.getElementById('toast');
+    toast.textContent = msg;
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 2600);
+  }
+
+  document.getElementById('btn-save-image').addEventListener('click', async () => {
+    const node = document.getElementById('result-card');
+    if (typeof html2canvas === 'undefined') {
+      showToast('이미지 생성 기능을 불러오지 못했어요. 잠시 후 다시 시도해주세요');
+      return;
+    }
+    try {
+      const bgColor = getComputedStyle(document.body).backgroundColor || '#ffffff';
+      const canvas = await html2canvas(node, { scale: 2, backgroundColor: bgColor, useCORS: true });
+      const dataUrl = canvas.toDataURL('image/png');
+      const link = document.createElement('a');
+      link.href = dataUrl;
+      link.download = '손절타이밍_신호등_결과.png';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      showToast('이미지가 저장됐어요!');
+    } catch (e) {
+      showToast('이미지 저장에 실패했어요');
+    }
+  });
+})();
+</script>
+</body>
+</html>
